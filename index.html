@@ -3,18 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Clan-APP [TODN]</title>
+  <title>Clan-APP [4ODN]</title>
   
-  <!-- WICHTIG: Pfade korrigiert für das Unterverzeichnis auf GitHub Pages -->
-  <link rel="manifest" href='data:application/manifest+json,{"name":"Clan-APP [4ODN]","short_name":"4ODN","start_url":"./index.html","scope":"./","display":"standalone","background_color":"#1a1a1a","theme_color":"#1a1a1a","orientation":"portrait-primary","icons":[{"src":"https://google.com","sizes":"512x512","type":"image/png"}]}'>
+  <link rel="manifest" href='data:application/manifest+json,{"name":"Clan-APP [4ODN]","short_name":"4ODN","start_url":"./index.html","display":"standalone","background_color":"#1a1a1a","theme_color":"#1a1a1a","orientation":"portrait-primary","icons":[{"src":"https://google.com","sizes":"512x512","type":"image/png"}]}'>
 
   <style>
-    body { background-color: #1a1a1a; color: white; font-family: sans-serif; text-align: center; padding-top: 50px; }
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #1a1a1a; color: white; font-family: sans-serif; overflow: hidden; }
+    .center-screen { text-align: center; padding-top: 50px; }
     .btn { background-color: #007bff; color: white; border: none; padding: 14px 28px; font-size: 18px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 85%; max-width: 300px; margin-top: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
     .loader { border: 4px solid #333; border-top: 4px solid #007bff; border-radius: 50%; width: 45px; height: 45px; animation: spin 1s linear infinite; margin: 30px auto; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    #install-screen { animation: fadeIn 0.5s ease-in-out; }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    iframe { width: 100%; height: 100%; border: none; display: none; }
   </style>
 </head>
 <body>
@@ -24,100 +23,97 @@
     const GOOGLE_SCRIPT_URL = "https://google.com";
   </script>
 
-  <!-- Ladebildschirm während die App im Hintergrund prüft -->
-  <div id="loading-screen">
+  <!-- Ladebildschirm -->
+  <div id="loading-screen" class="center-screen">
     <h2>Clan-App wird geladen...</h2>
     <div class="loader"></div>
   </div>
 
   <!-- Installations-Bildschirm -->
-  <div id="install-screen" style="display: none;">
+  <div id="install-screen" class="center-screen" style="display: none;">
     <img src="https://google.com" style="width: 110px; height: 110px; border-radius: 20px; object-fit: cover; margin-bottom: 10px;">
     <h2>Clan-APP [4ODN]</h2>
     <p style="color: #ccc; padding: 0 20px; font-size: 15px;">Installiere das Tool als App auf deinem Homescreen für schnellen Datenzugriff.</p>
     <button id="pwa-install-btn" class="btn">📲 App installieren</button>
     <br><br>
-    <a href="#" id="skip-btn" style="color: #999; text-decoration: underline; font-size: 14px;">Ohne Installation weiterleiten</a>
+    <a href="#" id="skip-btn" style="color: #999; text-decoration: underline; font-size: 14px;">Ohne Installation starten</a>
   </div>
 
+  <!-- Das unsichtbare Vollbild-Fenster für Google Apps Script -->
+  <iframe id="app-frame" src=""></iframe>
+
   <script>
-    // 1. Service Worker registrieren (Scope exakt definiert)
+    // 1. Service Worker registrieren
     if ('serviceWorker' in navigator) {
-      const swCode = `
-        self.addEventListener('install', e => self.skipWaiting());
-        self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => new Response('Offline'))));
-      `;
+      const swCode = `self.addEventListener('install', e => self.skipWaiting()); self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => new Response('Offline'))));`;
       const blob = new Blob([swCode], { type: 'application/javascript' });
-      navigator.serviceWorker.register(URL.createObjectURL(blob), { scope: './' })
-        .then(() => console.log("Service Worker registriert"))
-        .catch(err => console.error("SW Fehler:", err));
+      navigator.serviceWorker.register(URL.createObjectURL(blob), { scope: './' });
     }
 
-    // 2. Discord-ID aus der URL fangen und im Browser-Speicher (LocalStorage) sichern
+    // 2. Discord-ID aus der URL fangen und sichern
     const urlParams = new URLSearchParams(window.location.search);
     let discordId = urlParams.get('id');
-    
     if (discordId) {
       localStorage.setItem('clan_discord_id', discordId);
     } else {
       discordId = localStorage.getItem('clan_discord_id') || "";
     }
 
-    // 3. Status prüfen: Läuft das System bereits als installierte Standalone-App?
     const isApp = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    const iframe = document.getElementById('app-frame');
 
-    // Funktion für die Weiterleitung zu Google Apps Script
-    function redirectToGoogle() {
-      window.location.href = GOOGLE_SCRIPT_URL + "?id=" + discordId;
+    // Funktion: Lädt das Google Script in das Iframe und blendet es ein
+    function loadGoogleApp() {
+      iframe.src = GOOGLE_SCRIPT_URL + "?id=" + discordId;
+      iframe.onload = function() {
+        document.getElementById('loading-screen').style.display = 'none';
+        document.getElementById('install-screen').style.display = 'none';
+        iframe.style.display = 'block';
+      };
     }
 
-    // Wenn es bereits die App ist: SOFORT ohne Verzögerung weiterleiten
+    // Wenn es bereits als installierte App läuft: Direkt laden!
     if (isApp) {
-      redirectToGoogle();
+      loadGoogleApp();
     }
 
-    // 4. Installations-Event abfangen
+    // 3. Installations-Aufforderung abfangen
     let deferredPrompt = null;
-    let checked = false;
+    let hasPrompted = false;
 
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
       
-      // Browser meldet: App ist installierbar! Zeige den Install-Screen
       if (!isApp) {
-        checked = true;
+        hasPrompted = true;
         document.getElementById('loading-screen').style.display = 'none';
         document.getElementById('install-screen').style.display = 'block';
       }
     });
 
-    // Sicherheits-Timer: Wenn der Browser nach 2,5 Sekunden das Event NICHT wirft 
-    // (weil die App z.B. schon installiert ist oder der Browser es nicht unterstützt) -> Weiterleiten!
+    // Fallback: Wenn das System keine PWA-Installation unterstützt (oder schon installiert ist)
     setTimeout(() => {
-      if (!checked && !isApp) {
-        redirectToGoogle();
+      if (!hasPrompted && !isApp) {
+        loadGoogleApp();
       }
-    }, 2500);
+    }, 2000);
 
-    // Klick auf den Installations-Button
+    // Klick auf Installieren
     document.getElementById('pwa-install-btn').addEventListener('click', async () => {
       if (!deferredPrompt) return;
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
       if (outcome === 'accepted') {
-        document.getElementById('install-screen').style.display = 'none';
-        document.getElementById('loading-screen').style.display = 'block';
         deferredPrompt = null;
-        // Dem System 1,5 Sekunden Zeit geben die App einzurichten, dann weiterleiten
-        setTimeout(redirectToGoogle, 1500);
+        loadGoogleApp();
       }
     });
 
-    // Manuelles Überspringen erlauben
+    // Klick auf Überspringen
     document.getElementById('skip-btn').addEventListener('click', (e) => {
       e.preventDefault();
-      redirectToGoogle();
+      loadGoogleApp();
     });
   </script>
 </body>

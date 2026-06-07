@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clan-APP [4ODN]</title>
+  
+  <!-- PWA Manifest direkt eingebunden -->
+  <link rel="manifest" href='data:application/manifest+json,{"name":"Clan-APP [4ODN]","short_name":"4ODN","start_url":".","display":"standalone","background_color":"#1a1a1a","theme_color":"#1a1a1a","orientation":"portrait-primary","icons":[{"src":"https://google.com","sizes":"512x512","type":"image/png"}]}'>
+
+  <style>
+    body { background-color: #1a1a1a; color: white; font-family: sans-serif; text-align: center; padding-top: 50px; }
+    .btn { background-color: #007bff; color: white; border: none; padding: 12px 24px; font-size: 18px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 80%; max-width: 300px; margin-top: 20px; }
+    .loader { border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <!-- TRAGE HIER DEINE ECHTE GOOGLE APPS SCRIPT EXEC-URL EIN -->
+  <script>
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzgDAk0TM2-m9yZrArtANCH3B50InaH3f24oCXh6-NKKzjS299101pftxWjl6LMnksEmw/exec";
+  </script>
+
+  <div id="loading-screen">
+    <h2>Clan-App wird geladen...</h2>
+    <div class="loader"></div>
+  </div>
+
+  <div id="install-screen" style="display: none;">
+    <img src="https://google.com" style="width: 120px; border-radius: 20px;">
+    <h2>Clan-APP [4ODN]</h2>
+    <p>Installiere die App für den schnellen Zugriff auf den Kalender.</p>
+    <button id="pwa-install-btn" class="btn">📲 App installieren</button>
+    <br><br>
+    <a href="#" id="skip-btn" style="color: #bbb; text-decoration: underline; font-size: 14px;">Ohne Installation fortfahren</a>
+  </div>
+
+  <script>
+    // 1. Service Worker registrieren (Zwingend notwendig für PWA)
+    if ('serviceWorker' in navigator) {
+      const swCode = `self.addEventListener('install', e => self.skipWaiting()); self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => new Response('Offline'))));`;
+      const blob = new Blob([swCode], { type: 'application/javascript' });
+      navigator.serviceWorker.register(URL.createObjectURL(blob));
+    }
+
+    // 2. Discord-ID aus der URL fangen und dauerhaft im Browser merken
+    const urlParams = new URLSearchParams(window.location.search);
+    let discordId = urlParams.get('id');
+    
+    if (discordId) {
+      localStorage.setItem('clan_discord_id', discordId);
+    } else {
+      discordId = localStorage.getItem('clan_discord_id') || "";
+    }
+
+    // 3. Prüfen, ob die App im "Standalone-Modus" (als installierte App) läuft
+    const isApp = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+    // Weiterleitungs-Funktion zu Google Apps Script
+    function redirectToGoogle() {
+      window.location.href = GOOGLE_SCRIPT_URL + "?id=" + discordId;
+    }
+
+    // Hauptlogik beim Laden der Seite
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      
+      // Wenn der Nutzer im normalen Browser ist, zeige den Installations-Bildschirm
+      if (!isApp) {
+        document.getElementById('loading-screen').style.display = 'none';
+        document.getElementById('install-screen').style.display = 'block';
+      }
+    });
+
+    // Falls die App bereits installiert IST oder das System kein PWA-Prompt unterstützt: Direkt weiterleiten!
+    setTimeout(() => {
+      if (!deferredPrompt || isApp) {
+        redirectToGoogle();
+      }
+    }, 800);
+
+    // Klick auf den Install-Button
+    document.getElementById('pwa-install-btn').addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        document.getElementById('install-screen').style.display = 'none';
+        document.getElementById('loading-screen').style.display = 'block';
+        setTimeout(redirectToGoogle, 2000); // Kurz warten, dann weiterleiten
+      }
+    });
+
+    // Überspringen-Link falls jemand die App partout nicht installieren will
+    document.getElementById('skip-btn').addEventListener('click', (e) => {
+      e.preventDefault();
+      redirectToGoogle();
+    });
+  </script>
+</body>
+</html>

@@ -9,7 +9,7 @@
 
   <style>
     body { background-color: #1a1a1a; color: white; font-family: sans-serif; text-align: center; padding-top: 50px; margin: 0; }
-    .btn { background-color: #007bff; color: white; border: none; padding: 14px 28px; font-size: 18px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 85%; max-width: 300px; margin-top: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+    .btn { background-color: #007bff; color: white; border: none; padding: 14px 28px; font-size: 18px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 85%; max-width: 300px; margin-top: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); text-decoration: none; display: inline-block; }
     .btn-green { background-color: #28a745; }
     .loader { border: 4px solid #333; border-top: 4px solid #007bff; border-radius: 50%; width: 45px; height: 45px; animation: spin 1s linear infinite; margin: 30px auto; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -17,24 +17,24 @@
 </head>
 <body>
 
-  <!-- TRAGE HIER DEINE ECHTE GOOGLE APPS SCRIPT EXEC-URL EIN -->
   <script>
     const GOOGLE_SCRIPT_URL = "https://google.com";
   </script>
 
-  <!-- Startbildschirm für bereits installierte Nutzer -->
+  <!-- Startbildschirm für bereits installierte Nutzer oder Fallbacks -->
   <div id="launch-screen" style="display: block;">
     <img src="https://google.com" style="width: 110px; height: 110px; border-radius: 20px; object-fit: cover;">
-    <h2>Clan-APP [4ODN]</h2>
+    <h2>Clan-APP [TODN]</h2>
     <div class="loader"></div>
-    <p style="color: #aaa;">Verbindung zum Kalender wird aufgebaut...</p>
-    <button id="manual-open-btn" class="btn btn-green" style="display: none;">Kalender öffnen</button>
+    <p style="color: #aaa; padding: 0 20px;">Verbindung zum Kalender wird aufgebaut...</p>
+    <!-- Sicherer, direkter Link-Button als Google-Fallback -->
+    <a href="#" id="manual-open-btn" class="btn btn-green" style="display: none;" target="_blank">📅 Zum Kalender wechseln</a>
   </div>
 
-  <!-- Installations-Bildschirm für neue Browser-Nutzer -->
+  <!-- Installations-Bildschirm -->
   <div id="install-screen" style="display: none;">
     <img src="https://google.com" style="width: 110px; height: 110px; border-radius: 20px; object-fit: cover;">
-    <h2>Clan-APP [4ODN]</h2>
+    <h2>Clan-APP [TODN]</h2>
     <p style="color: #ccc; padding: 0 20px; font-size: 15px;">Installiere das Tool als App auf deinem Startbildschirm.</p>
     <button id="pwa-install-btn" class="btn">📲 App installieren</button>
     <br><br>
@@ -49,7 +49,7 @@
       navigator.serviceWorker.register(URL.createObjectURL(blob), { scope: './' });
     }
 
-    // 2. ID-Handling (Aus URL oder Speicher laden)
+    // 2. ID-Handling aus URL oder LocalStorage
     const urlParams = new URLSearchParams(window.location.search);
     let discordId = urlParams.get('id');
     if (discordId) {
@@ -61,15 +61,20 @@
     const isApp = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
     const finalUrl = GOOGLE_SCRIPT_URL + "?id=" + discordId;
 
-    // Funktion zum sicheren Öffnen des Google Links ohne Iframe
+    // Funktion zum Öffnen über target="_blank", damit Google nicht blockiert
     function openClanApp() {
-      // Erzwingt das Öffnen im sauberen App-Scope ohne Blockierung
-      window.location.replace(finalUrl);
+      window.open(finalUrl, '_blank');
     }
 
-    // Wenn es bereits als installierte Standalone-App läuft: Sofort die Seite laden!
+    // Button-Fallback vorbereiten
+    const manualBtn = document.getElementById('manual-open-btn');
+    manualBtn.href = finalUrl;
+
+    // Wenn es bereits die App ist: Zeige direkt den großen Start-Button
     if (isApp) {
-      openClanApp();
+      document.getElementById('launch-screen').querySelector('.loader').style.display = 'none';
+      document.getElementById('launch-screen').querySelector('p').style.display = 'none';
+      manualBtn.style.display = 'inline-block';
     }
 
     // 3. Installations-Prompt abfangen
@@ -80,7 +85,6 @@
       e.preventDefault();
       deferredPrompt = e;
       
-      // Nur wenn wir nicht in der installierten App sind, zeigen wir den Install-Bildschirm
       if (!isApp) {
         checked = true;
         document.getElementById('launch-screen').style.display = 'none';
@@ -88,18 +92,14 @@
       }
     });
 
-    // Fallback nach 1,5 Sekunden: Wenn nicht installierbar (weil bereits installiert oder iOS), direkt App öffnen
+    // Fallback nach 2 Sekunden (falls keine Installation möglich ist)
     setTimeout(() => {
       if (!checked && !isApp) {
-        // Falls Popup-Blocker zuschlagen, zeigen wir kurz einen grünen Ausweich-Button
         document.getElementById('launch-screen').querySelector('.loader').style.display = 'none';
-        const openBtn = document.getElementById('manual-open-btn');
-        openBtn.style.display = 'inline-block';
-        openBtn.addEventListener('click', openClanApp);
-        
+        manualBtn.style.display = 'inline-block';
         openClanApp();
       }
-    }, 1500);
+    }, 2000);
 
     // Klick auf Installieren
     document.getElementById('pwa-install-btn').addEventListener('click', async () => {
@@ -110,7 +110,8 @@
         deferredPrompt = null;
         document.getElementById('install-screen').style.display = 'none';
         document.getElementById('launch-screen').style.display = 'block';
-        setTimeout(openClanApp, 1000);
+        document.getElementById('launch-screen').querySelector('.loader').style.display = 'none';
+        manualBtn.style.display = 'inline-block';
       }
     });
 

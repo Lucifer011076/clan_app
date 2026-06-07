@@ -23,7 +23,7 @@
     // =========================================================================
     // EINSTELLUNGEN: HIER DEINE GOOGLE-URL UND DEINE LOGO-URL EINTRAGEN
     // =========================================================================
-    const GOOGLE_SCRIPT_URL = "https://google.com";
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzgDAk0TM2-m9yZrArtANCH3B50InaH3f24oCXh6-NKKzjS299101pftxWjl6LMnksEmw/exec";
     
     // Ersetze diese URL mit dem Link zu deinem hochgeladenen Clan-Logo!
     const CLAN_LOGO_URL = "https://google.com"; 
@@ -43,7 +43,7 @@
     document.getElementById('pwa-manifest').setAttribute('href', 'data:application/manifest+json,' + encodeURIComponent(JSON.stringify(manifestObject)));
   </script>
 
-  <div class="card">
+    <div class="card">
     <!-- Hier wird dein hochgeladenes Logo angezeigt -->
     <div class="logo-container">
       <img id="clan-logo" src="" class="logo-img" alt="TODN Logo">
@@ -52,10 +52,10 @@
     <h2>Clan-APP [TODN]</h2>
     <p>Willkommen im TODN-Bereich. Wähle eine Option aus:</p>
 
-    <!-- Option 1: Sofortiger Wechsel (Immer aktiv und klickbar) -->
-    <a href="#" id="manual-open-btn" class="btn btn-green" target="_blank">📅 Zum Kalender wechseln</a>
+    <!-- TEXT HIER ANGEPASST: Weg vom Kalender, hin zum Clan-Tool -->
+    <a href="#" id="manual-open-btn" class="btn btn-green" target="_blank">🎮 Zum Clan-Tool wechseln</a>
 
-    <!-- Option 2: App installieren (Wird ausgeblendet, wenn bereits installiert) -->
+    <!-- Option 2: App installieren -->
     <div id="install-container" style="display: none;">
       <hr style="border: 0; border-top: 1px solid #444; margin: 20px 0;">
       <p style="font-size: 13px; color: #aaa;">Für schnellen Zugriff ohne Browserleiste:</p>
